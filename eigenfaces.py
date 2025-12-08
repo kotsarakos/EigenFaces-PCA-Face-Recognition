@@ -209,3 +209,41 @@ plt.show()
 np.save(os.path.join(output_folder, "mean_face.npy"), mean_face_vector)
 
 print("Task 3.1 completed successfully.")
+
+# Task 3.2
+# Normalize data (subtract Mean Face)
+# Save Train/Test sets before & after normalization
+
+output_folder = "dataset_npy"
+
+database_Train = np.load(os.path.join(output_folder, "database_Train.npy"))
+database_Test  = np.load(os.path.join(output_folder, "database_Test.npy")) 
+mean_face_vector = np.load(os.path.join(output_folder, "mean_face.npy"))      
+
+D, train_count, N_classes = database_Train.shape
+_, test_count, _ = database_Test.shape
+
+# Prep for normalized datasets
+database_Train_normalized = np.zeros_like(database_Train, dtype=np.float32)
+database_Test_normalized  = np.zeros_like(database_Test, dtype=np.float32)
+
+# Normalize Train
+for cls in range(N_classes):
+    for img in range(train_count):
+        original_img = database_Train[:, img, cls]
+        database_Train_normalized[:, img, cls] = original_img - mean_face_vector
+
+# Normalize Test
+for cls in range(N_classes):
+    for img in range(test_count):
+        original_img = database_Test[:, img, cls]
+        database_Test_normalized[:, img, cls] = original_img - mean_face_vector
+
+
+# Save normalized versions
+np.save(os.path.join(output_folder, "database_Train_normalized.npy"), database_Train_normalized)
+np.save(os.path.join(output_folder, "database_Test_normalized.npy"),  database_Test_normalized)
+
+print("Task 3.2 completed successfully.")
+print("Train normalized:", database_Train_normalized.shape)
+print("Test normalized:", database_Test_normalized.shape)
