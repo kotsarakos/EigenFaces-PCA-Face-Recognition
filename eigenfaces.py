@@ -2,6 +2,7 @@ import os
 import cv2
 import glob
 import numpy as np
+import matplotlib.pyplot as plt
 
 # Task 1.1 (Transform and Save images)
 
@@ -173,3 +174,38 @@ np.save(os.path.join(output_folder, "labels_test.npy"),  labels_test)
 
 print("Train:", database_Train.shape, " Test:", database_Test.shape)
 print("Task 2.1 completed successfully.")
+
+
+# Task 3.1
+# Compute the Mean Face (average of all training images)
+# Show the Mean Face as an image
+
+# Load Train database from Task 2.1
+output_folder = "dataset_npy"
+database_Train = np.load(os.path.join(output_folder, "database_Train.npy"))
+
+
+# (10304, 7, 40)
+D, train_count, N_classes = database_Train.shape
+H, W = 112, 92   # original image dimensions
+
+# Convert 3D train set to 2D (shape: 10304 x 280)
+train_images_2d = database_Train.reshape(D, train_count * N_classes)
+
+# Calculate Mean Face 
+mean_face_vector = np.mean(train_images_2d, axis=1)  # shape (10304,)
+
+# Turn into 2D image 112x92
+mean_face_image = mean_face_vector.reshape(H, W)
+
+# Show Mean Face
+plt.figure(figsize=(4,4))
+plt.imshow(mean_face_image, cmap='gray')
+plt.title("Mean Face")
+plt.axis('off')
+plt.show()
+
+# Save Mean Face Photo
+np.save(os.path.join(output_folder, "mean_face.npy"), mean_face_vector)
+
+print("Task 3.1 completed successfully.")
