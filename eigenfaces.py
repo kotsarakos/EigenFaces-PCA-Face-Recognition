@@ -244,6 +244,63 @@ for cls in range(N_classes):
 np.save(os.path.join(output_folder, "database_Train_normalized.npy"), database_Train_normalized)
 np.save(os.path.join(output_folder, "database_Test_normalized.npy"),  database_Test_normalized)
 
-print("Task 3.2 completed successfully.")
 print("Train normalized:", database_Train_normalized.shape)
 print("Test normalized:", database_Test_normalized.shape)
+print("Task 3.2 completed successfully.")
+
+# Task 4.1
+# Compute first p eigenvectors (p=2,5,20,30,50)
+# Show first 4 EigenFaces as images
+
+output_folder = "dataset_npy"
+train_norm = np.load(os.path.join(output_folder, "database_Train_normalized.npy"))
+
+# shape = (10304, 7, 40)
+D, train_count, N_classes = train_norm.shape
+H, W = 112, 92
+
+
+# Step 1: Reshape to 2D matrix A 
+A = train_norm.reshape(D, train_count * N_classes)
+
+print("A shape:", A.shape)
+
+
+# SVD decomposition
+U, S, Vt = np.linalg.svd(A, full_matrices=False)
+
+# U shape = (10304, 280)
+# S shape = (280,)
+# Vt shape = (280, 280)
+
+print("SVD done.")
+print("U shape:", U.shape)
+
+
+# Extract eigenfaces
+# These are the columns of U
+p_values = [2, 5, 20, 30, 50]
+
+eigenfaces = {p: U[:, :p] for p in p_values}
+
+# Save eigenfaces
+np.save(os.path.join(output_folder, "eigenfaces_U.npy"), U)
+
+
+
+# Show FIRST 4 eigenfaces as images
+
+plt.figure(figsize=(8, 8))
+for i in range(4):
+    eigenface_vector = U[:, i]
+    eigenface_img = eigenface_vector.reshape(H, W)  
+
+    plt.subplot(2, 2, i+1)
+    plt.imshow(eigenface_img, cmap='gray')
+    plt.title(f"EigenFace {i+1}")
+    plt.axis('off')
+
+plt.tight_layout()
+plt.show()
+
+print("Task 4.1 completed successfully.")
