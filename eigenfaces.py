@@ -1,4 +1,4 @@
-# M4ML Exercise: EigenFaces - Unified Python Script
+# M4ML Exercise: EigenFaces
 # Harokopio University - Winter Semester 2025-26
 #
 # Implementation of EigenFaces algorithm for face recognition
@@ -31,6 +31,7 @@ def transform_images(base_dir, output_dir):
     Task 1.1 
     Transforms PGM images to PNG format and saves them.
     """
+    print("--- 1.1 Transform Images ---")
     png_dir = os.path.join(output_dir, 'png_faces')
     os.makedirs(png_dir, exist_ok=True)
     
@@ -47,7 +48,7 @@ def transform_images(base_dir, output_dir):
             if img is not None:
                 png_file = os.path.join(output_class_path, os.path.basename(pgm_file).replace('.pgm', '.png'))
                 cv2.imwrite(png_file, img)
-    print("Task 1.1\nConversion from PGM to PNG completed.")
+    print("Conversion from PGM to PNG completed.")
     return png_dir
 
 def store_database(png_dir):
@@ -109,7 +110,7 @@ def partition_data(database_2D, labels, t):
     Task 2.1 
     Splits the 2D database and labels into Training and Test sets using ratio t.
     """
-
+    print("\n--- 2.1 Storing, Saving and Splitting the Data ---")
     # Data preparation: X (features: 400x10304), y (labels: 400)
     X = database_2D.T 
     y = labels
@@ -139,7 +140,7 @@ def compute_mean_face(train_faces):
     Task 3.1 
     Computes the Mean Face vector from the Training set and displays it as an image.
     """
-    
+    print("\n--- 3.1 Computes the Mean Face ---")
     # mean_face_vector: 10304 x 1
     mean_face_vector = np.mean(train_faces, axis=1, keepdims=True)
     
@@ -154,6 +155,8 @@ def compute_mean_face(train_faces):
     plt.savefig(os.path.join(output_dir, '3_1_Mean_Face.png'))
     plt.show()
     
+    print(f"Task 3.1 Mean Face completed.")
+
     return mean_face_vector
 
 def normalize_data(train_faces, test_faces, mean_face_vector):
@@ -161,7 +164,8 @@ def normalize_data(train_faces, test_faces, mean_face_vector):
     Task 3.2
     Normalizes data by subtracting the Mean Face.
     """
-    
+    print("\n--- 3.2 Normalizes data by subtracting the Mean Face ---")
+
     # Normalization
     centered_train_faces = train_faces - mean_face_vector
     centered_test_faces = test_faces - mean_face_vector
@@ -180,7 +184,7 @@ def compute_eigenfaces(centered_train_faces, p_values):
     Task 4.1 
     Computes EigenFaces (Eigenvectors) using SVD and visualizes the first four.
     """
-    
+    print("\n--- 4.1 Normalizes data by subtracting the Mean Face ---")
     # The columns of U are the EigenFaces (eigenvectors of A * A^T)
     # U: D x N (10304 x 280 for t=0.7)
     U, S, V_T = np.linalg.svd(centered_train_faces, full_matrices=False)
@@ -224,7 +228,8 @@ def compute_and_plot_distance_matrix(centered_train_faces, centered_test_faces, 
     Task 5.1 
     Computes and plots the distance matrix (Dist) using Euclidean and Cosine distances.
     """
-    
+    print("\n--- 5.1 Distance using Euclidean and Cosine distances ---")
+
     # Projection Matrix W: Eigenvectors selected (D x p)
     W = eigenvectors[:, :p]
     W_T = W.T # Projection Matrix (p x D)
@@ -261,6 +266,8 @@ def compute_and_plot_distance_matrix(centered_train_faces, centered_test_faces, 
     plt.savefig(os.path.join(output_dir, f'5_1_Distance_Matrices_p{p}.png'))
     plt.show()
 
+    print("Task 5.1 completed.")
+
     return Dist_Euclidean, Dist_Cosine
 
 def recognition_sweep(database_2D, labels, p_values, t_values):
@@ -268,7 +275,8 @@ def recognition_sweep(database_2D, labels, p_values, t_values):
     Task 5.2 
     Provides the Recognition Rate by varying t and p using Euclidean distance (20 results).
     """
-    
+    print("\n--- 5.2 Recognition Rate ---")
+
     results = {}
     
     # Perform a sweep over t values
@@ -330,9 +338,43 @@ def recognition_sweep(database_2D, labels, p_values, t_values):
     plt.savefig(os.path.join(output_dir, '5_2_Recognition_Rate_Sweep.png'))
     plt.show()
     
+    print("Task 5.2 completed.")
+
     return results
 
-# --- 6. FACE RECONSTRUCTION ---
+def plot_2D_projection(centered_train_faces, centered_test_faces, train_labels, test_labels, eigenvectors):
+    """
+    Task 5.3 (Optional)
+    Plots the 2D projection of Training and Test faces using p=2 and colors for 40 classes.
+    """
+    print("\n--- 5.3 Optional Task ---")
+    
+    p = 2
+    W = eigenvectors[:, :p]  # D x 2
+    W_T = W.T
+
+    train_proj = W_T @ centered_train_faces  # 2 x N_train
+    test_proj = W_T @ centered_test_faces    # 2 x N_test
+
+    plt.figure(figsize=(10, 8))
+    for class_id in range(1, 41):
+        train_idx = np.where(train_labels == class_id)[0]
+        test_idx = np.where(test_labels == class_id)[0]
+
+        plt.scatter(train_proj[0, train_idx], train_proj[1, train_idx], label=f'Train C{class_id}', alpha=0.6, s=20)
+        plt.scatter(test_proj[0, test_idx], test_proj[1, test_idx], label=f'Test C{class_id}', alpha=0.6, s=20, marker='x')
+
+    plt.title('5.3 2D Projection of Faces (p=2, t=0.7)')
+    plt.xlabel('EigenFace 1')
+    plt.ylabel('EigenFace 2')
+    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize='small', ncol=2)
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, '5_3_2D_Projection.png'))
+    plt.show()
+
+    print("Task 5.3 completed.")
+
 
 def reconstruct_face(F_centered, W, F_mean):
     """Helper function to reconstruct the initial face from its centered vector and EigenFaces."""
@@ -352,6 +394,8 @@ def reconstruction_error(test_faces, mean_face_vector, eigenvectors, p_values):
     Task 6.1 
     Provides the Total Reconstruct Error varying p.
     """
+
+    print("\n--- 6.1 Total Reconstruct Error ---")
 
     results = {}
     
@@ -373,7 +417,7 @@ def reconstruction_error(test_faces, mean_face_vector, eigenvectors, p_values):
             # Reconstruct the face
             F_reconstructed_init_j = reconstruct_face(F_centered_j, W, mean_face_vector)
             
-            # Calculate error: ||F_init - F_hat_init||_F^2
+            # Calculate error
             error_j = np.sum((F_init_j - F_reconstructed_init_j)**2) 
             total_error += error_j
             
@@ -389,13 +433,20 @@ def reconstruction_error(test_faces, mean_face_vector, eigenvectors, p_values):
     error_list = list(results.values())
     
     plt.figure(figsize=(10, 6))
-    plt.plot(p_list, error_list, marker='o')
-    plt.title('6.1 Total Reconstruct Error vs Number of EigenFaces (p)')
+    plt.plot(p_list, error_list, marker='o', label='Total Error')
+    for i, p in enumerate(p_list):
+        plt.text(p, error_list[i], f"{error_list[i]:.2e}", fontsize=8, ha='center')
+
+    plt.title('6.1 Total Reconstruct Error vs Number of EigenFaces (p), t=0.7')
     plt.xlabel('Number of EigenFaces (p)')
     plt.ylabel('Total Reconstruct Error (Frobenius Norm Squared)')
+    plt.ticklabel_format(style='sci', axis='y', scilimits=(0,0))
     plt.grid(True)
+    plt.legend()
     plt.savefig(os.path.join(output_dir, '6_1_Reconstruct_Error_Sweep.png'))
     plt.show()
+
+    print("Task 6.1 completed.")
     
     return results
 
@@ -404,6 +455,8 @@ def visualize_reconstruction(test_faces, mean_face_vector, eigenvectors, p_value
     Task 6.2 
     Visualizes one reconstructed Test face for the first 5 persons across different p values.
     """
+
+    print("\n--- 6.2 Visualizes the first 5 persons across different p values ---")
 
     # Find the index of the first test image for the first 5 classes (Persons 1 to 5)
     person_indices = []
@@ -452,15 +505,23 @@ def visualize_reconstruction(test_faces, mean_face_vector, eigenvectors, p_value
             axes[row_idx + 1, col_idx].set_title(f'p={p}')
             axes[row_idx + 1, col_idx].axis('off')
 
+    # Hide unused subplots (those without images)
+    # in case of something goes wrong
+    for row in axes:
+        for ax in np.atleast_1d(row):
+            if not ax.has_data():
+                ax.axis('off')
+
     plt.tight_layout(rect=[0, 0, 1, 0.96])
     plt.savefig(os.path.join(output_dir, '6_2_Reconstructed_Faces.png'))
     plt.show()
     
-    print("   Visualization complete.")
+    print("   Visualization complete.\n")
+    print("Task 6.2 completed.")
 
-# ==============================================================================
+# ===============================
 # --- MAIN EXECUTION BLOCK ---
-# ==============================================================================
+# ===============================
 
 # 1. Load and Store Data
 png_dir = transform_images(base_dir, output_dir)
@@ -471,8 +532,6 @@ p_values_recog = [2, 5, 20, 30, 50]         # For Recognition Rate (5.2)
 p_values_recon = [2, 5, 20, 30, 50, 100, 300, 500, 1000] # For Reconstruction Error (6.1)
 p_values_vis = [2, 20, 50, 100, 500]       # For Reconstruction Visualization (6.2)
 t_values_recog = [0.2, 0.5, 0.7, 0.9]       # For Recognition Rate (5.2)
-
-# --- Perform Steps 2, 3, 4, 5.1, 6.1, 6.2 for t=0.7 (Base Case) ---
 
 # 2. Partition Data (t=0.7)
 train_faces, test_faces, train_labels, test_labels = partition_data(database_2D, labels, t=t_value_default)
@@ -487,15 +546,17 @@ eigenvectors = compute_eigenfaces(centered_train_faces, p_values_recog)
 # 5.1 Compute and Plot Distance Matrices (t=0.7, p=50)
 Dist_Euc, Dist_Cos = compute_and_plot_distance_matrix(centered_train_faces, centered_test_faces, eigenvectors, t=t_value_default, p=50)
 
+# 5.2 Recognition Rate Sweep (t=[0.2, 0.5, 0.7, 0.9], p=[2, 5, 20, 30, 50])
+recognition_results = recognition_sweep(database_2D, labels, p_values_recog, t_values_recog)
+
+# 5.3 (Optional) 2D Projection of Training and Test faces
+plot_2D_projection(centered_train_faces, centered_test_faces, train_labels, test_labels, eigenvectors)
+
 # 6.1 Compute Total Reconstruct Error (t=0.7)
 reconstruct_error_results = reconstruction_error(test_faces, mean_face_vector, eigenvectors, p_values_recon)
 
 # 6.2 Visualize Face Reconstruction (t=0.7)
 visualize_reconstruction(test_faces, mean_face_vector, eigenvectors, p_values_vis, test_labels)
 
-# --- Perform Step 5.2 Sweep ---
 
-# 5.2 Recognition Rate Sweep (t=[0.2, 0.5, 0.7, 0.9], p=[2, 5, 20, 30, 50])
-recognition_results = recognition_sweep(database_2D, labels, p_values_recog, t_values_recog)
-
-print("\n--- All 10 mandatory tasks completed and results/plots saved to 'eigenfaces_output' directory. ---")
+print("\n--- All 10(+1) tasks completed and results/plots saved to 'eigenfaces_output' directory. ---")
