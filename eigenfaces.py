@@ -1,6 +1,5 @@
 # M4ML Exercise: EigenFaces
 # Harokopio University - Winter Semester 2025-26
-#
 # Implementation of EigenFaces algorithm for face recognition
 # using PCA (Principal Component Analysis).
 # Konstantinos Kotsaras (2022050)
@@ -48,6 +47,7 @@ def transform_images(base_dir, output_dir):
             if img is not None:
                 png_file = os.path.join(output_class_path, os.path.basename(pgm_file).replace('.pgm', '.png'))
                 cv2.imwrite(png_file, img)
+
     print("Conversion from PGM to PNG completed.")
     return png_dir
 
@@ -107,37 +107,64 @@ def store_database(png_dir):
 
 def partition_data(database_3D, t):
     """
-    Task 2.1 
-    Splits the 3D database into Training and Test sets based on the 3D structure.
-    Then reshapes them to 2D for subsequent tasks.
+    Task 2.1
+    Splits the 3D database into Training and Test sets based on the 3D structure
+    using RANDOM permutation per class to ensure proper randomization.
     """
     print(f"\n--- 2.1 Splitting the Data using 3D Structure (t={t}) ---")
     
     # database_3D shape: (10304, 10, 40)
     D_dim, NumImages, Classes = database_3D.shape
-    
     num_train = int(t * NumImages)
     
-    # Split 3D data
-    train_3D = database_3D[:, :num_train, :]  # Shape: (10304, 7, 40)
-    test_3D  = database_3D[:, num_train:, :]  # Shape: (10304, 3, 40)
+    # Initialize lists to hold the columns
+    train_list = []
+    test_list = []
     
-    # Reshape 2D data from 3D data for PCA
-    # Use F order to maintain column-major orders
-    train_faces = train_3D.reshape(D_dim, -1, order='F') 
-    test_faces  = test_3D.reshape(D_dim, -1, order='F')
+    # Labels lists
+    y_train_list = []
+    y_test_list = []
+
+    # Set seed for reproducibility
+    np.random.seed(42) 
+
+    for class_id in range(Classes):
+        # Create indices 0 to 9
+        indices = np.random.permutation(NumImages)
+        
+        # Select random indices for train and test
+        train_indices = indices[:num_train]
+        test_indices = indices[num_train:]
+        
+        # Extract data for this class
+        class_data = database_3D[:, :, class_id] # Shape (10304, 10)
+        
+        # Split using the random indices
+        train_imgs = class_data[:, train_indices] # (10304, 7)
+        test_imgs = class_data[:, test_indices]   # (10304, 3)
+        
+        train_list.append(train_imgs)
+        test_list.append(test_imgs)
+        
+        # Create labels (class_id + 1 because classes are 1-40)
+        y_train_list.extend([class_id + 1] * num_train)
+        y_test_list.extend([class_id + 1] * (NumImages - num_train))
+
+    # Concatenate all classes together along the 2nd dimension (columns)
+    train_faces = np.hstack(train_list) # (10304, 280)
+    test_faces = np.hstack(test_list)   # (10304, 120)
     
-    #Labels for Train and Test sets
-    y_train = np.repeat(np.arange(1, Classes + 1), num_train)
-    y_test  = np.repeat(np.arange(1, Classes + 1), NumImages - num_train)
+    y_train = np.array(y_train_list)
+    y_test = np.array(y_test_list)
     
+    # Save the data
     np.save(os.path.join(output_dir, 'train_faces.npy'), train_faces)
     np.save(os.path.join(output_dir, 'test_faces.npy'), test_faces)
     np.save(os.path.join(output_dir, 'train_labels.npy'), y_train)
     np.save(os.path.join(output_dir, 'test_labels.npy'), y_test)
     
-    print(f"Task 2.1 Split completed using 3D logic.")
-    print(f"Training set (2D): {train_faces.shape}, Test set (2D): {test_faces.shape}")
+    print(f"Task 2.1 Split completed (Randomized per class).")
+    print(f"Training set: {train_faces.shape}, Test set: {test_faces.shape}")
     
     return train_faces, test_faces, y_train, y_test
 
@@ -147,6 +174,7 @@ def compute_mean_face(train_faces):
     Computes the Mean Face vector from the Training set and displays it as an image.
     """
     print("\n--- 3.1 Computes the Mean Face ---")
+
     # mean_face_vector: 10304 x 1
     mean_face_vector = np.mean(train_faces, axis=1, keepdims=True)
     
@@ -279,7 +307,7 @@ def compute_and_plot_distance_matrix(centered_train_faces, centered_test_faces, 
 def recognition_sweep(database_3D, p_values, t_values):
     """
     Task 5.2 
-    Provides the Recognition Rate by varying t and p using Euclidean distance (20 results).
+    Provides the Recognition Rate by varying t and p using Euclidean distance.
     """
     print("\n--- 5.2 Recognition Rate ---")
 
@@ -350,7 +378,7 @@ def recognition_sweep(database_3D, p_values, t_values):
 
 def plot_2D_projection(centered_train_faces, centered_test_faces, train_labels, test_labels, eigenvectors):
     """
-    Task 5.3 (Optional)
+    Task 5.3
     Plots the 2D projection of Training and Test faces using p=2 and colors for 40 classes.
     """
     print("\n--- 5.3 Optional Task ---")
@@ -381,7 +409,6 @@ def plot_2D_projection(centered_train_faces, centered_test_faces, train_labels, 
 
     print("Task 5.3 completed.")
 
-
 def reconstruct_face(F_centered, W, F_mean):
     """Helper function to reconstruct the initial face from its centered vector and EigenFaces."""
     W_T = W.T
@@ -405,15 +432,18 @@ def reconstruction_error(test_faces, mean_face_vector, eigenvectors, p_values):
 
     results = {}
     
-    F_init_test = test_faces # Original Test Faces (D x 120)
-    F_centered_test = F_init_test - mean_face_vector # Centered Test Faces (D x 120)
+    # Original Test Faces (D x 120)
+    F_init_test = test_faces 
+    # Centered Test Faces (D x 120)
+    F_centered_test = F_init_test - mean_face_vector 
     
     for p in p_values:
         if p > eigenvectors.shape[1]:
             # Skip if p is larger than the number of available eigenvectors (max 280 for t=0.7)
             continue
-            
-        W = eigenvectors[:, :p] # EigenFaces matrix (D x p)
+
+        # EigenFaces matrix (D x p)    
+        W = eigenvectors[:, :p] 
         
         total_error = 0
         for j in range(F_init_test.shape[1]): # Iterate over all Test faces
