@@ -102,38 +102,44 @@ def store_database(png_dir):
     np.save(os.path.join(output_dir, 'labels.npy'), labels)
     
     print("Storage for Task 1.2 completed.")
-    return database_2D, labels
+    
+    return database_2D, database_3D, labels
 
-
-def partition_data(database_2D, labels, t):
+def partition_data(database_3D, t):
     """
     Task 2.1 
-    Splits the 2D database and labels into Training and Test sets using ratio t.
+    Splits the 3D database into Training and Test sets based on the 3D structure.
+    Then reshapes them to 2D for subsequent tasks.
     """
-    print("\n--- 2.1 Storing, Saving and Splitting the Data ---")
-    # Data preparation: X (features: 400x10304), y (labels: 400)
-    X = database_2D.T 
-    y = labels
+    print(f"\n--- 2.1 Splitting the Data using 3D Structure (t={t}) ---")
     
-    # Use StratifiedShuffleSplit to ensure the ratio t is maintained within each class
-    sss = StratifiedShuffleSplit(n_splits=1, test_size=1-t, random_state=42)
-    for train_index, test_index in sss.split(X, y):
-        X_train, X_test = X[train_index], X[test_index]
-        y_train, y_test = y[train_index], y[test_index]
-        
-    # Revert to D x N format (10304 x N)
-    train_faces = X_train.T
-    test_faces = X_test.T
+    # database_3D shape: (10304, 10, 40)
+    D_dim, NumImages, Classes = database_3D.shape
     
-    # Save Training and Test sets
+    num_train = int(t * NumImages)
+    
+    # Split 3D data
+    train_3D = database_3D[:, :num_train, :]  # Shape: (10304, 7, 40)
+    test_3D  = database_3D[:, num_train:, :]  # Shape: (10304, 3, 40)
+    
+    # Reshape 2D data from 3D data for PCA
+    # Use F order to maintain column-major orders
+    train_faces = train_3D.reshape(D_dim, -1, order='F') 
+    test_faces  = test_3D.reshape(D_dim, -1, order='F')
+    
+    #Labels for Train and Test sets
+    y_train = np.repeat(np.arange(1, Classes + 1), num_train)
+    y_test  = np.repeat(np.arange(1, Classes + 1), NumImages - num_train)
+    
     np.save(os.path.join(output_dir, 'train_faces.npy'), train_faces)
     np.save(os.path.join(output_dir, 'test_faces.npy'), test_faces)
     np.save(os.path.join(output_dir, 'train_labels.npy'), y_train)
     np.save(os.path.join(output_dir, 'test_labels.npy'), y_test)
     
-    print(f"Task 2.1 Split completed.\nTraining: {train_faces.shape[1]} images, Test: {test_faces.shape[1]} images.")
+    print(f"Task 2.1 Split completed using 3D logic.")
+    print(f"Training set (2D): {train_faces.shape}, Test set (2D): {test_faces.shape}")
+    
     return train_faces, test_faces, y_train, y_test
-
 
 def compute_mean_face(train_faces):
     """
@@ -184,7 +190,7 @@ def compute_eigenfaces(centered_train_faces, p_values):
     Task 4.1 
     Computes EigenFaces (Eigenvectors) using SVD and visualizes the first four.
     """
-    print("\n--- 4.1 Normalizes data by subtracting the Mean Face ---")
+    print("\n--- 4.1 Computes EigenFaces ---")
     # The columns of U are the EigenFaces (eigenvectors of A * A^T)
     # U: D x N (10304 x 280 for t=0.7)
     U, S, V_T = np.linalg.svd(centered_train_faces, full_matrices=False)
@@ -270,7 +276,7 @@ def compute_and_plot_distance_matrix(centered_train_faces, centered_test_faces, 
 
     return Dist_Euclidean, Dist_Cosine
 
-def recognition_sweep(database_2D, labels, p_values, t_values):
+def recognition_sweep(database_3D, p_values, t_values):
     """
     Task 5.2 
     Provides the Recognition Rate by varying t and p using Euclidean distance (20 results).
@@ -281,8 +287,8 @@ def recognition_sweep(database_2D, labels, p_values, t_values):
     
     # Perform a sweep over t values
     for t in t_values:
-        # Re-partition the data for the new t ratio
-        train_faces, test_faces, train_labels, test_labels = partition_data(database_2D, labels, t=t)
+        # Re-partition the data for the new t ratio using 3D logic
+        train_faces, test_faces, train_labels, test_labels = partition_data(database_3D, t=t)
         
         # Re-compute Mean Face and Centering
         mean_face_vector = compute_mean_face(train_faces)
@@ -525,7 +531,7 @@ def visualize_reconstruction(test_faces, mean_face_vector, eigenvectors, p_value
 
 # 1. Load and Store Data
 png_dir = transform_images(base_dir, output_dir)
-database_2D, labels = store_database(png_dir)
+database_2D, database_3D, labels = store_database(png_dir)
 
 # Define p and t value sets for sweeps
 p_values_recog = [2, 5, 20, 30, 50]         # For Recognition Rate (5.2)
@@ -534,7 +540,7 @@ p_values_vis = [2, 20, 50, 100, 500]       # For Reconstruction Visualization (6
 t_values_recog = [0.2, 0.5, 0.7, 0.9]       # For Recognition Rate (5.2)
 
 # 2. Partition Data (t=0.7)
-train_faces, test_faces, train_labels, test_labels = partition_data(database_2D, labels, t=t_value_default)
+train_faces, test_faces, train_labels, test_labels = partition_data(database_3D, t=t_value_default)
 
 # 3. Center Data
 mean_face_vector = compute_mean_face(train_faces)
@@ -547,7 +553,7 @@ eigenvectors = compute_eigenfaces(centered_train_faces, p_values_recog)
 Dist_Euc, Dist_Cos = compute_and_plot_distance_matrix(centered_train_faces, centered_test_faces, eigenvectors, t=t_value_default, p=50)
 
 # 5.2 Recognition Rate Sweep (t=[0.2, 0.5, 0.7, 0.9], p=[2, 5, 20, 30, 50])
-recognition_results = recognition_sweep(database_2D, labels, p_values_recog, t_values_recog)
+recognition_results = recognition_sweep(database_3D, p_values_recog, t_values_recog)
 
 # 5.3 (Optional) 2D Projection of Training and Test faces
 plot_2D_projection(centered_train_faces, centered_test_faces, train_labels, test_labels, eigenvectors)
