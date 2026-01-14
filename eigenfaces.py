@@ -9,9 +9,7 @@ import cv2
 import os
 from glob import glob
 import matplotlib.pyplot as plt
-from sklearn.model_selection import StratifiedShuffleSplit
 from sklearn.metrics.pairwise import euclidean_distances, cosine_similarity
-
 
 H, W = 112, 92
 D = H * W      # Image Vector Dimension (10304) = 112 x 92
